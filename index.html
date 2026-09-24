@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>はなしログ・ろくおん</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#f3f8f4;color:#203d34;font-family:system-ui,sans-serif}main{max-width:680px;margin:24px auto;padding:28px;background:#fff;border-radius:24px;text-align:center}h1{font-size:36px}button{width:100%;min-height:130px;border:0;border-radius:22px;color:#fff;font:700 34px system-ui;cursor:pointer}#start{background:#147457}#stop{background:#b94332}button:disabled{opacity:.45}#timer{font-size:48px;font-variant-numeric:tabular-nums;margin:18px}meter{width:100%;height:34px}#status{font-size:24px;line-height:1.6;min-height:90px}.note{font-size:18px;line-height:1.6}[hidden]{display:none!important}@media(max-width:600px){main{margin:10px;padding:18px}}
+  </style>
+</head>
+<body><main>
+  <h1>🎤 ろくおん</h1>
+  <p class="note">みんなの まんなかに おいてね</p>
+  <button id="start">🎤 ろくおんを はじめる</button>
+  <button id="stop" hidden>■ おわる</button>
+  <div id="timer">0:00</div>
+  <meter id="level" min="0" max="1" value="0" aria-label="こえのおおきさ"></meter>
+  <p id="status" role="status" aria-live="assertive">ボタンを おしてね</p>
+</main><script>
+  'use strict';
+  const $=id=>document.getElementById(id),params=new URLSearchParams(location.search);
+  const token=params.get('token')||'',parentOrigin=params.get('parentOrigin')||'';
+  const maxSeconds=Math.max(10,Math.min(300,Number(params.get('maxSeconds'))||300));
+  let recorder,stream,audioContext,interval,started=0,sent=false;
+  function validParentOrigin(value){try{const u=new URL(value);return u.protocol==='https:'&&(u.hostname==='script.google.com'||u.hostname.endsWith('.googleusercontent.com'));}catch(e){return false;}}
+  function status(text){$('status').textContent=text;}
+  function cleanup(){clearInterval(interval);if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;if(audioContext){audioContext.close().catch(()=>{});audioContext=null;}$('level').value=0;}
+  function fmt(s){return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+  if(!token||!validParentOrigin(parentOrigin)||!window.opener){$('start').disabled=true;status('この がめんは、はなしログから ひらいてね。');}
+  $('start').onclick=async()=>{
+    $('start').disabled=true;status('マイクを じゅんびしているよ');
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+      const mimeTypes=['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus'];
+      const mimeType=mimeTypes.find(t=>MediaRecorder.isTypeSupported(t))||'';
+      recorder=new MediaRecorder(stream,{...(mimeType?{mimeType}:{}),audioBitsPerSecond:64000});const chunks=[];
+      recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+      recorder.onerror=e=>{console.error(e);cleanup();status('ろくおんに もんだいが おきたよ。せんせいを よんでね。');};
+      recorder.onstop=async()=>{
+        const seconds=Math.min(maxSeconds+1,(Date.now()-started)/1000);cleanup();$('stop').hidden=true;status('もとの がめんに おくっているよ');
+        try{const blob=new Blob(chunks,{type:recorder.mimeType||'audio/webm'});if(blob.size<100||blob.size>5000000)throw new Error('音声サイズが範囲外です');const buffer=await blob.arrayBuffer();sent=true;window.opener.postMessage({type:'HANASHI_AUDIO',token,seconds,mimeType:blob.type,buffer},parentOrigin,[buffer]);}
+        catch(e){sent=false;$('start').disabled=false;status('おくれませんでした。もういちど やってみてね。');console.error(e);}
+      };
+      recorder.start(1000);started=Date.now();$('start').hidden=true;$('stop').hidden=false;status('こえを とっているよ');
+      try{audioContext=new AudioContext();const analyser=audioContext.createAnalyser();audioContext.createMediaStreamSource(stream).connect(analyser);const values=new Uint8Array(analyser.fftSize);
+        interval=setInterval(()=>{const elapsed=Math.floor((Date.now()-started)/1000),left=maxSeconds-elapsed;$('timer').textContent=fmt(elapsed);analyser.getByteTimeDomainData(values);$('level').value=Math.min(1,Math.sqrt(values.reduce((sum,v)=>sum+((v-128)/128)**2,0)/values.length)*5);if(left===60)status('あと 1ぷんだよ');if(left===30)status('あと 30びょう。きまったことを はなそう');if(left<=0&&recorder.state==='recording')recorder.stop();},250);
+      }catch(e){console.warn(e);interval=setInterval(()=>{const elapsed=Math.floor((Date.now()-started)/1000),left=maxSeconds-elapsed;$('timer').textContent=fmt(elapsed);if(left===60)status('あと 1ぷんだよ');if(left===30)status('あと 30びょう。きまったことを はなそう');if(left<=0&&recorder.state==='recording')recorder.stop();},250);}
+    }catch(e){cleanup();$('start').disabled=false;status(e&&e.name==='NotAllowedError'?'マイクを「きょか」して、もういちど おしてね。':'マイクが つかえません。せんせいを よんでね。');console.error(e);}
+  };
+  $('stop').onclick=()=>{if(recorder&&recorder.state==='recording'){$('stop').disabled=true;recorder.stop();}};
+  window.addEventListener('message',e=>{if(e.origin===parentOrigin&&e.source===window.opener&&e.data&&e.data.type==='HANASHI_RECEIVED'&&e.data.token===token){status('✅ おとを わたしたよ。もとの がめんに もどってね。');setTimeout(()=>window.close(),900);}});
+  window.addEventListener('beforeunload',()=>{cleanup();if(!sent&&window.opener&&validParentOrigin(parentOrigin))window.opener.postMessage({type:'HANASHI_CANCEL',token},parentOrigin);});
+</script></body></html>
