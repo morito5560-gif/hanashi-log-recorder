@@ -21,7 +21,7 @@
   'use strict';
   const $=id=>document.getElementById(id),params=new URLSearchParams(location.search);
   const token=params.get('token')||'',parentOrigin=params.get('parentOrigin')||'';
-  const maxSeconds=Math.max(10,Math.min(300,Number(params.get('maxSeconds'))||300));
+  const maxSeconds=Math.max(10,Math.min(600,Number(params.get('maxSeconds'))||300));
   let recorder,stream,audioContext,interval,started=0,sent=false;
   function validParentOrigin(value){try{const u=new URL(value);return u.protocol==='https:'&&(u.hostname==='script.google.com'||u.hostname.endsWith('.googleusercontent.com'));}catch(e){return false;}}
   function status(text){$('status').textContent=text;}
@@ -39,7 +39,7 @@
       recorder.onerror=e=>{console.error(e);cleanup();status('ろくおんに もんだいが おきたよ。せんせいを よんでね。');};
       recorder.onstop=async()=>{
         const seconds=Math.min(maxSeconds+1,(Date.now()-started)/1000);cleanup();$('stop').hidden=true;status('もとの がめんに おくっているよ');
-        try{const blob=new Blob(chunks,{type:recorder.mimeType||'audio/webm'});if(blob.size<100||blob.size>5000000)throw new Error('音声サイズが範囲外です');const buffer=await blob.arrayBuffer();sent=true;window.opener.postMessage({type:'HANASHI_AUDIO',token,seconds,mimeType:blob.type,buffer},parentOrigin,[buffer]);}
+        try{const blob=new Blob(chunks,{type:recorder.mimeType||'audio/webm'});if(blob.size<100||blob.size>10000000)throw new Error('音声サイズが範囲外です');const buffer=await blob.arrayBuffer();sent=true;window.opener.postMessage({type:'HANASHI_AUDIO',token,seconds,mimeType:blob.type,buffer},parentOrigin,[buffer]);}
         catch(e){sent=false;$('start').disabled=false;status('おくれませんでした。もういちど やってみてね。');console.error(e);}
       };
       recorder.start(1000);started=Date.now();$('start').hidden=true;$('stop').hidden=false;status('こえを とっているよ');
