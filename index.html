@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <title>はなしログ・ろくおん</title>
+  <title>おはなしログ・ろくおん</title>
   <style>
     *{box-sizing:border-box}body{margin:0;background:#f3f8f4;color:#203d34;font-family:system-ui,sans-serif}main{max-width:680px;margin:24px auto;padding:28px;background:#fff;border-radius:24px;text-align:center}h1{font-size:36px}button{width:100%;min-height:130px;border:0;border-radius:22px;color:#fff;font:700 34px system-ui;cursor:pointer}#start{background:#147457}#stop{background:#b94332}button:disabled{opacity:.45}#timer{font-size:48px;font-variant-numeric:tabular-nums;margin:18px}meter{width:100%;height:34px}#status{font-size:24px;line-height:1.6;min-height:90px}.note{font-size:18px;line-height:1.6}[hidden]{display:none!important}@media(max-width:600px){main{margin:10px;padding:18px}}
   </style>
@@ -27,7 +27,7 @@
   function status(text){$('status').textContent=text;}
   function cleanup(){clearInterval(interval);if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;if(audioContext){audioContext.close().catch(()=>{});audioContext=null;}$('level').value=0;}
   function fmt(s){return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
-  if(!token||!validParentOrigin(parentOrigin)||!window.opener){$('start').disabled=true;status('この がめんは、はなしログから ひらいてね。');}
+  if(!token||!validParentOrigin(parentOrigin)||!window.opener){$('start').disabled=true;status('この がめんは、おはなしログから ひらいてね。');}
   $('start').onclick=async()=>{
     $('start').disabled=true;status('マイクを じゅんびしているよ');
     try{
